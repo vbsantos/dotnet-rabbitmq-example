@@ -1,0 +1,41 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    ports:
+      - "5672:5672" # RabbitMQ messaging port
+      - "15672:15672" # RabbitMQ management UI
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  seq:
+    image: datalust/seq:latest
+    ports:
+      - 5341:80
+    environment:
+      - ACCEPT_EULA=Y
+
+  consumer:
+    build: ./Example.RabbitMq.Consumer
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - RabbitMQ__HostName=rabbitmq
+      - Seq__Url=http://seq:5341
+
+  producer:
+    build: ./Example.RabbitMq.Producer
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - RabbitMQ__HostName=rabbitmq
+      - Seq__Url=http://seq:5341
