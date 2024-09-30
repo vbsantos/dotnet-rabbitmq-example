@@ -1,21 +1,28 @@
-# Use the official .NET SDK image for building the application
+# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
+
+# This stage is used when running from VS in fast mode (Default for Debug configuration)
+FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
+USER app
+WORKDIR /app
+
+
+# This stage is used to build the service project
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG BUILD_CONFIGURATION=Release
+WORKDIR /src
+COPY ["Example.RabbitMq.Consumer/Example.RabbitMq.Consumer.csproj", "Example.RabbitMq.Consumer/"]
+RUN dotnet restore "./Example.RabbitMq.Consumer/Example.RabbitMq.Consumer.csproj"
+COPY . .
+WORKDIR "/src/Example.RabbitMq.Consumer"
+RUN dotnet build "./Example.RabbitMq.Consumer.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+# This stage is used to publish the service project to be copied to the final stage
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet publish "./Example.RabbitMq.Consumer.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
+# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
+FROM base AS final
 WORKDIR /app
-
-# Copy the CSPROJ file and restore dependencies
-COPY *.csproj ./
-RUN dotnet restore
-
-# Copy the rest of the application code and build
-COPY . ./
-RUN dotnet publish -c Release -o out
-
-# Use the official .NET Runtime image for running the application
-FROM mcr.microsoft.com/dotnet/runtime:8.0
-WORKDIR /app
-
-# Copy the published output from the build stage
-COPY --from=build /app/out ./
-
-# Set the entry point to run the application
+COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "Example.RabbitMq.Consumer.dll"]

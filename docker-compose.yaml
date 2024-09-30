@@ -23,7 +23,9 @@ services:
       - ACCEPT_EULA=Y
 
   consumer:
-    build: ./Example.RabbitMq.Consumer
+    build:
+      context: .
+      dockerfile: ./Example.RabbitMq.Consumer/Dockerfile
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -32,7 +34,9 @@ services:
       - Seq__Url=http://seq:5341
 
   producer:
-    build: ./Example.RabbitMq.Producer
+    build:
+      context: .
+      dockerfile: ./Example.RabbitMq.Producer/Dockerfile
     depends_on:
       rabbitmq:
         condition: service_healthy
